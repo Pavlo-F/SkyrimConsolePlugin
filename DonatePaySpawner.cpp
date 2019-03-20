@@ -55,82 +55,82 @@ std::vector<std::string> Split(const std::string &text, std::string delimiter) {
 
 void SpawnTask(std::string path, BYTE keyEnable, BYTE keyDisable, int spawnInterval)
 {
-		if (GetKeyPressed(keyEnable))
+	if (GetKeyPressed(keyEnable))
+	{
+		_isEnabled = true;
+		PrintMsg(_isEnabled);
+	} 
+	else if (GetKeyPressed(keyDisable))
+	{
+		_isEnabled = false;
+		PrintMsg(_isEnabled);
+	}
+
+	if (_isEnabled && fileExists(path))
+	{
+		CActor *player = Game::GetPlayer();
+		if (Actor::IsDead(player))
 		{
-			_isEnabled = true;
-			PrintMsg(_isEnabled);
-		} 
-		else if (GetKeyPressed(keyDisable))
-		{
-			_isEnabled = false;
-			PrintMsg(_isEnabled);
+			return;
 		}
 
-		if (_isEnabled && fileExists(path))
+		for (const auto & entry : fs::directory_iterator(path))
 		{
-			CActor *player = Game::GetPlayer();
-			if (Actor::IsDead(player))
+			if (GetKeyPressed(keyEnable))
 			{
-				return;
+				_isEnabled = true;
+				PrintMsg(_isEnabled);
+			}
+			else if (GetKeyPressed(keyDisable))
+			{
+				_isEnabled = false;
+				PrintMsg(_isEnabled);
 			}
 
-			for (const auto & entry : fs::directory_iterator(path))
+			if (_isEnabled && entry.path().extension() == ".spawn")
 			{
-				if (GetKeyPressed(keyEnable))
+				std::ifstream t(entry.path());
+				std::string str((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+				t.close();
+
+				if (str.find("save ") != std::string::npos)
 				{
-					_isEnabled = true;
-					PrintMsg(_isEnabled);
+					Game::RequestSave();
 				}
-				else if (GetKeyPressed(keyDisable))
+				else
 				{
-					_isEnabled = false;
-					PrintMsg(_isEnabled);
-				}
+					std::vector<std::string> commandAndWhat = Split(str, ";");
+					std::string command = commandAndWhat[0];
+					std::string what = "noname";
 
-				if (_isEnabled && entry.path().extension() == ".spawn")
-				{
-					std::ifstream t(entry.path());
-					std::string str((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
-					t.close();
-
-					if (str.find("save ") != std::string::npos)
+					if (commandAndWhat.capacity() > 1)
 					{
-						Game::RequestSave();
-					}
-					else
-					{
-						std::vector<std::string> comandAndWhat = Split(str, ";");
-						std::string comand = comandAndWhat[0];
-						std::string what = "noname";
-
-						if (comandAndWhat.capacity() > 1)
-						{
-							what = comandAndWhat[1];
-						}
-
-						char * exeCcomand = new char[comand.size() + 1];
-						std::copy(comand.begin(), comand.end(), exeCcomand);
-						exeCcomand[comand.size()] = '\0';
-
-						ExecuteConsoleCommand(exeCcomand, NULL);
-						delete[] exeCcomand;
-
-
-						std::string msg = comand + " by " + what;
-
-						char * print = new char[msg.size() + 1];
-						std::copy(msg.begin(), msg.end(), print);
-						print[msg.size()] = '\0';
-
-						PrintNote("spawned %s", print);
-						delete[] print;
+						what = commandAndWhat[1];
 					}
 
-					fs::remove(entry.path()); 
-					Wait(spawnInterval * 1000);
+					char * exeCommand = new char[command.size() + 1];
+					std::copy(command.begin(), command.end(), exeCommand);
+					exeCommand[command.size()] = '\0';
+
+					ExecuteConsoleCommand(exeCommand, NULL);
+					delete[] exeCommand;
+
+
+					std::string msg = command + " by " + what;
+
+					char * print = new char[msg.size() + 1];
+					std::copy(msg.begin(), msg.end(), print);
+					print[msg.size()] = '\0';
+
+					PrintNote("spawned %s", print);
+					delete[] print;
 				}
+
+				fs::remove(entry.path()); 
+				Wait(spawnInterval * 1000);
 			}
 		}
+	}
 }
 
 
